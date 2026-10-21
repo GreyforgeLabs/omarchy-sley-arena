@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "greyforge.sley-arena",
+  "name": "Sley Arena",
+  "version": "0.1.0",
+  "author": "Greyforge Labs",
+  "license": "MIT",
+  "homepage": "https://sleylang.org/arena",
+  "description": "Your Sley Arena bot's rank on the bar. Click for the ladder and your latest matches.",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "Sley Arena",
+    "description": "Your bot's live rank in the Sley Arena, with the top of the ladder one click away.",
+    "category": "Info",
+    "aliases": ["sley", "arena", "ladder", "bots"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": { "mode": "duel", "login": "", "interval": 300 }
+  }
+}
