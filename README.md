@@ -7,6 +7,12 @@ Click it for the top of the ladder and your latest matches; click any row to ope
   GitHub login from `~/.config/sley-arena/session.json`. Otherwise set `"login"` in the widget's
   `shell.json` entry.
 - `mode`: `duel` (default) or `brawl`. `interval`: seconds between refreshes (default 300, minimum 60).
-- It reads only the public arena API; it never sends your session token anywhere.
+- It reads only the public arena API (`arena-api.greyforge.tech`); it never sends your session token anywhere.
 
-Install by copying this folder into your Omarchy plugins directory and adding the widget to your bar.
+## Install
+
+```sh
+omarchy plugin add https://github.com/GreyforgeLabs/omarchy-sley-arena --enable
+```
+
+Then place **Sley Arena** on your bar. To remove it: `omarchy plugin remove greyforge.sley-arena`.

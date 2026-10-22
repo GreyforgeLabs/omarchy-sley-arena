@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Ui
 import qs.Commons
+import qs.Commons as Commons
 
 // Sley Arena: your bot's rank on the bar. The login comes from this widget's "login" setting, or
 // from the player kit's session file (~/.config/sley-arena/session.json), so it usually needs no setup.
@@ -14,9 +15,9 @@ BarWidget {
   property var mine: null          // my best bot's ladder row, if ranked
   property var matches: []         // my latest matches
   property string phase: "loading" // loading | ok | offline
-  readonly property string api: "https://sleylang.org/arena/api"
+  readonly property string api: "https://arena-api.greyforge.tech/arena/api"  // not sleylang.org: its bot checkpoint blocks non-browser clients
   readonly property string site: "https://sleylang.org/arena"
-  readonly property color fg: bar ? bar.barForeground : Color.foreground
+  readonly property color fg: bar ? bar.barForeground : Commons.Color.foreground
   readonly property string fam: bar ? bar.fontFamily : Style.font.family
   readonly property string mode: setting("mode", "duel") === "brawl" ? "brawl" : "duel"
   readonly property int every: Math.max(60, Math.round(Number(setting("interval", 300))) || 300)
