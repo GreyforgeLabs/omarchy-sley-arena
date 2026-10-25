@@ -4,9 +4,15 @@ Serves /<scenario>/arena/api/ladder and /matches with fixture data shaped
 like the real API (worker/src/ladder.ts and matches.ts), with per-scenario
 delays and failures, and logs every request; /<scenario>/_log returns the
 log as JSON. Listens on 127.0.0.1 only and prints the port on stdout.
+
+Parameters are checked like the Worker's validate.ts: mode is duel|brawl,
+the ladder limit is 1..1000 (default 500) and the matches limit 1..100
+(default 20); anything else answers 400 with the Worker's error body, so a
+widget request the real API would refuse fails here too.
 """
 
 import json
+import re
 import sys
 import threading
 import time
@@ -29,10 +35,19 @@ def filler(start, count):
             for i in range(count)]
 
 
-def seat(bot_id, name, score):
-    return {"seat": 0, "bot_id": bot_id, "name": name, "score": score,
-            "owner": {"login": "x", "avatar": None}, "written_by": "gpt", "house": False}
+def seat(n, bot_id, name, score):
+    return {"seat": n, "bot_id": bot_id, "version_id": bot_id * 10, "version": 1, "name": name,
+            "owner": {"login": "x", "avatar": None}, "written_by": "gpt", "house": False,
+            "score": score, "rating_before": 1500.0, "rating_after": 1500.0}
 
+
+def match(match_id, winner, seats):
+    return {"id": match_id, "season_id": 1, "mode": "duel", "ruleset": "S1-duel", "featured": False,
+            "winner": winner, "created_at": "2026-10-21T06:22:40.000Z",
+            "replay_url": "/arena/api/matches/%d/replay" % match_id, "seats": seats}
+
+
+SEASON = {"id": 1, "name": "Season 1", "status": "live"}
 
 BASIC = [
     bot(1, 1, "House Claude", "GreyforgeLabs", 1700.2, house=True),
@@ -41,8 +56,8 @@ BASIC = [
 ] + filler(4, 4)
 
 MATCHES = [
-    {"id": 501, "mode": "duel", "winner": 0, "seats": [seat(33, "Night Shuttle", 12), seat(7, "Looper", 9)]},
-    {"id": 502, "mode": "duel", "winner": None, "seats": [seat(33, "Night Shuttle", 4), seat(8, "Gambler", 4)]},
+    match(501, 0, [seat(0, 33, "Night Shuttle", 12), seat(1, 7, "Looper", 9)]),
+    match(502, None, [seat(0, 33, "Night Shuttle", 4), seat(1, 8, "Gambler", 4)]),
 ]
 
 # scenario -> (ladder(mode, limit) -> (status, body, delay), matches status)
@@ -57,6 +72,26 @@ SCENARIOS = {
 
 LOG = {}
 LOCK = threading.Lock()
+
+
+class BadParam(Exception):
+    pass
+
+
+def mode_param(q):
+    mode = q.get("mode") or "duel"
+    if mode not in ("duel", "brawl"):
+        raise BadParam("mode must be duel or brawl.")
+    return mode
+
+
+def limit_param(q, default, maximum):
+    value = q.get("limit")
+    if not value:
+        return default
+    if not re.fullmatch(r"\d{1,4}", value) or not 1 <= int(value) <= maximum:
+        raise BadParam("limit must be 1 to %d." % maximum)
+    return int(value)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -84,15 +119,24 @@ class Handler(BaseHTTPRequestHandler):
             LOG.setdefault(scenario, []).append("/" + "/".join(parts[3:]) + ("?" + url.query if url.query else ""))
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
         ladder, matches_status = SCENARIOS[scenario]
-        if parts[1:] == ["arena", "api", "ladder"]:
-            status, bots, delay = ladder(q.get("mode", "duel"), int(q.get("limit", "500")))
-            time.sleep(delay)
-            return self.reply(status, {"mode": q.get("mode"), "bots": bots} if bots is not None else None)
-        if parts[1:] == ["arena", "api", "matches"]:
-            if matches_status != 200:
-                return self.reply(matches_status, None)
-            return self.reply(200, {"matches": MATCHES, "next_cursor": None})
-        return self.reply(404, {"error": "not found"})
+        try:
+            if parts[1:] == ["arena", "api", "ladder"]:
+                mode, limit = mode_param(q), limit_param(q, 500, 1000)
+                status, bots, delay = ladder(mode, limit)
+                time.sleep(delay)
+                body = {"season": SEASON, "mode": mode, "written_by": None, "bots": bots}
+                return self.reply(status, body if bots is not None else None)
+            if parts[1:] == ["arena", "api", "matches"]:
+                mode_param(q)
+                limit = limit_param(q, 20, 100)
+                if matches_status != 200:
+                    return self.reply(matches_status, None)
+                bot_id = int(q["bot"]) if q.get("bot", "").isdigit() else None
+                rows = [m for m in MATCHES if bot_id is None or any(s["bot_id"] == bot_id for s in m["seats"])]
+                return self.reply(200, {"matches": rows[:limit], "next_cursor": None})
+        except BadParam as e:
+            return self.reply(400, {"error": str(e), "code": "bad_param"})
+        return self.reply(404, {"error": "No such endpoint.", "code": "not_found"})
 
 
 def main():

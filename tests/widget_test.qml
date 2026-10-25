@@ -52,6 +52,12 @@ Item {
     x.open("GET", "http://127.0.0.1:" + port + "/" + scenario + "/_log")
     x.send()
   }
+  function status(path, done) {
+    const x = new XMLHttpRequest()
+    x.onreadystatechange = () => { if (x.readyState === XMLHttpRequest.DONE) done(x.status) }
+    x.open("GET", "http://127.0.0.1:" + port + path)
+    x.send()
+  }
 
   // [action, milliseconds to wait before the next one]
   readonly property var steps: [
@@ -73,7 +79,9 @@ Item {
     }, 300],
     [() => {
       const all = texts(widget)
-      check("popup lists the ladder and my record with draws", all.indexOf("you: #3 Night Shuttle  5W 2L 1D") !== -1, all)
+      check("popup lists the ladder", all.indexOf("#1  House Claude  ·  claude (house)  ·  1700") !== -1
+        && all.indexOf("#5  Bot 5  ·  claude  ·  1499") !== -1 && all.indexOf("#6  Bot 6  ·  claude  ·  1498") === -1, all)
+      check("popup lists my record with draws", all.indexOf("you: #3 Night Shuttle  5W 2L 1D") !== -1, all)
       check("popup lists my matches", all.indexOf("  won 12-9 vs Looper") !== -1, all)
       widget.open(widget.site + "/bot?id=33")
       check("rows open in the browser", Quickshell.launched.length === 1 && Quickshell.launched[0][1] === "https://arena.invalid/arena/bot?id=33", Quickshell.launched)
@@ -109,7 +117,10 @@ Item {
     [() => {
       check("without a login the bar shows the leader", widget.login === "" && barText() === "◆ arena #1 House Claude", barText())
       check("and no matches", widget.mine === null && widget.matches.length === 0)
-    }, 50]
+      // The fixture refuses what the Worker refuses, so the widget's requests are ones the real API accepts.
+      status("/basic/arena/api/ladder?mode=duel&limit=1001", s => check("fixture: a ladder limit over 1000 is refused like the API", s === 400, s))
+      status("/basic/arena/api/matches?bot=33&mode=duel&limit=101", s => check("fixture: a matches limit over 100 is refused like the API", s === 400, s))
+    }, 300]
   ]
 
   Timer { id: tick; onTriggered: root.next() }
