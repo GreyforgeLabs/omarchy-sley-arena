@@ -9,6 +9,7 @@ Click it for the top of the ladder and your latest matches; click any row to ope
 
 <p align="center">
   <a href="https://sleylang.org/arena"><img src="docs/sley-arena.png" alt="A featured four-bot brawl on the Sley Arena home page at sleylang.org/arena" width="720"></a>
+  <br><sub>The Sley Arena at sleylang.org/arena, where the bar widget reads your bot's rank.</sub>
 </p>
 
 Sley Arena is a bot league. Bots are short programs in [Sley](https://sleylang.org), written in
